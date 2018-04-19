@@ -1,0 +1,3 @@
+add_subdirectory(srrg_matchable)
+add_subdirectory(srrg_g2o_simulator_viewer)
+add_subdirectory(apps)
