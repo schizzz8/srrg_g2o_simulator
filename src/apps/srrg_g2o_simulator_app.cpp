@@ -215,8 +215,8 @@ int main(int argc, char **argv){
 
   std::cerr << "sbraco..." << std::endl;
 
-  Eigen::Vector2i position(5.0,5.0);
-  visited[0][0]=1;
+  Eigen::Vector3f position(4.0,4.0,M_PI/2.0f);
+  visited[4][4]=1;
   const int num_poses=50;
   int count=0;
 
@@ -227,62 +227,70 @@ int main(int argc, char **argv){
 
   while(continue_){
 
-//    std::cerr << "current position: " << position.transpose() << " - ";
+    std::cerr << std::endl << "current position: " << position.transpose() << std::endl;
 
     //sample new position
-    Eigen::Vector2i increment;
-    int n = dis(gen)/0.25f;
+    Eigen::Vector3f increment = Eigen::Vector3f::Zero();
+    float n = dis(gen);
 
-    switch (n) {
-      case 0:
-        increment = Eigen::Vector2i(1,0); //go right
-        break;
-      case 1:
-        increment = Eigen::Vector2i(0,1); //go up
-        break;
-      case 2:
-        increment = Eigen::Vector2i(-1,0); //go left
-        break;
-      case 3:
-        increment = Eigen::Vector2i(0,-1); //go down
-        break;
-      default:
-        break;
+    //go forward
+    if(n < 0.5f){
+      increment.x() = cos(position.z());
+      increment.y() = sin(position.z());
+      std::cerr << "go forward" << std::endl;
+    }
+    //go left
+    if(n >= 0.5f && n < 0.75f){
+      increment.x() = -sin(position.z());
+      increment.y() = cos(position.z());
+      increment.z() = M_PI/2.0f;
+      std::cerr << "go left" << std::endl;
+    }
+    //go right
+    if(n >= 0.75f){
+      increment.x() = sin(position.z());
+      increment.y() = -cos(position.z());
+      increment.z() = -M_PI/2.0f;
+      std::cerr << "go right" << std::endl;
     }
 
-    Eigen::Vector2i new_position = position+increment;
+    Eigen::Vector3f new_position = position+increment;
+    std::cerr << "new position: " << new_position.transpose() << std::endl;
 
-//    std::cerr << "new position: " << new_position.transpose() << std::endl;
-
-    if(new_position.x() < 0 || new_position.x() >= dimension.x()-1 ||
-       new_position.y() < 0 || new_position.y() >= dimension.y()-1){
-//      std::cerr << "out of grid!" << std::endl;
+    //check if new position is out of grid
+    if(new_position.x() < 0.0f || new_position.x() >= (float)(dimension.x()-1) ||
+       new_position.y() < 0.0f || new_position.y() >= (float)(dimension.y()-1)){
+      std::cerr << "out of grid!" << std::endl;
       continue;
     }
 
-    if(!visited[new_position.x()][new_position.y()])
+    //check if new position is already visited
+    if(!visited[new_position.x()][new_position.y()]){
+
       visited[new_position.x()][new_position.y()] = 1;
-    else{
-//      std::cerr << "already visited!" << std::endl;
-      continue;
+
+      std::cerr << "eddaje!" << std::endl;
+      const Eigen::Vector2i p = position.head(2).cast<int>();
+      const Eigen::Vector2i np = new_position.head(2).cast<int>();
+      CellPair pair(p,np);
+      CellPairPlaneMap::iterator it = map.find(pair);
+
+      if(it != map.end()){
+        MatchablePtr m = it->second;
+        MatchablePtrSet::iterator jt = set.find(m);
+        if(jt != set.end())
+          set.erase(jt);
+      } else {
+        std::cerr << pair.first_cell.transpose() << " - " << pair.second_cell.transpose() << " not found!" << std::endl;
+//        continue;
+      }
+
     }
 
-    if(neighborVisited(visited,new_position,dimension.x(),dimension.y())){
-      continue_=false;
-    }
-
-//    std::cerr << "eddaje!" << std::endl;
-
-    CellPair pair(position,new_position);
-    CellPairPlaneMap::iterator it = map.find(pair);
-    if(it != map.end()){
-      MatchablePtr m = it->second;
-      MatchablePtrSet::iterator jt = set.find(m);
-      if(jt != set.end())
-        set.erase(jt);
-    } else {
-      std::cerr << pair.first_cell.transpose() << " - " << pair.second_cell.transpose() << " not found!" << std::endl;
-    }
+//    if(neighborVisited(visited,new_position.head(2).cast<int>(),dimension.x(),dimension.y())){
+//      std::cerr << "deadlock" << std::endl;
+//      continue_=false;
+//    }
 
     position = new_position;
     count++;
