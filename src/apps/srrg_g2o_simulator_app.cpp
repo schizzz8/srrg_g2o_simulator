@@ -27,34 +27,6 @@ void computeRotationMatrix(Eigen::Matrix3f& rotation_matrix,
   }
 }
 
-bool neighborVisited(const std::vector<std::vector<int> > &visited,const Eigen::Vector2i &p, int x_dim, int y_dim){
-  const Eigen::Vector2i p_right (p.x()+1,p.y());
-  if(!(p_right.x() < 0 || p_right.x() >= x_dim-1 ||
-     p_right.y() < 0 || p_right.y() >= y_dim-1)){
-    if(!visited[p_right.x()][p_right.y()])
-      return false;
-  }
-  const Eigen::Vector2i p_up (p.x(),p.y()+1);
-  if(!(p_up.x() < 0 || p_up.x() >= x_dim-1 ||
-     p_up.y() < 0 || p_up.y() >= y_dim-1)){
-    if(!visited[p_up.x()][p_up.y()])
-      return false;
-  }
-  const Eigen::Vector2i p_left (p.x()-1,p.y());
-  if(!(p_left.x() < 0 || p_left.x() >= x_dim-1 ||
-     p_left.y() < 0 || p_left.y() >= y_dim-1)){
-    if(!visited[p_left.x()][p_left.y()])
-      return false;
-  }
-  const Eigen::Vector2i p_down (p.x(),p.y()-1);
-  if(!(p_down.x() < 0 || p_down.x() >= x_dim-1 ||
-     p_down.y() < 0 || p_down.y() >= y_dim-1)){
-    if(!visited[p_down.x()][p_down.y()])
-      return false;
-  }
-  return true;
-}
-
 struct CellPair{
   CellPair(const Eigen::Vector2i &first_cell_,
            const Eigen::Vector2i &second_cell_):
@@ -98,7 +70,29 @@ typedef std::set<MatchablePtr> MatchablePtrSet;
 int main(int argc, char **argv){
 
   float resolution = 1.0f;
-  Eigen::Vector2i dimension (10,10);
+  int d=6;
+  int num_poses=10;
+
+  int c=1;
+  while (c<argc) {
+    if(!strcmp(argv[c],"-d")){
+      c++;
+      d=std::atoi(argv[c]);
+    } else if(!strcmp(argv[c],"-n")){
+      c++;
+      num_poses=std::atoi(argv[c]);
+    } else if(!strcmp(argv[c],"-r")){
+      c++;
+      resolution=std::atof(argv[c]);
+    }
+    c++;
+  }
+
+  Eigen::Vector2i dimension (d,d);
+  Eigen::Vector3f position(d/2-1,d/2-1,0.0f);
+
+  std::cerr << "Grid dimension: " << dimension.x() << "x" << dimension.y() << std::endl;
+  std::cerr << "Initial position: " << position.transpose() << std::endl;
 
   MatchablePtrSet set;
   CellPairPlaneMap map;
@@ -205,19 +199,8 @@ int main(int argc, char **argv){
   std::cerr << "Scene has " << set.size() << " matchables before sbraco" << std::endl;
 
   //sbraco
-  std::vector<std::vector<int> > visited;
-  visited.resize(dimension.x());
-  for(int i=0; i<dimension.x(); ++i){
-    visited[i].resize(dimension.y());
-    for(int j=0; j<dimension.y(); ++j)
-      visited[i][j] = 0;
-  }
-
   std::cerr << "sbraco..." << std::endl;
 
-  Eigen::Vector3f position(4.0,4.0,M_PI/2.0f);
-  visited[4][4]=1;
-  const int num_poses=50;
   int count=0;
 
   bool continue_=true;
@@ -227,7 +210,7 @@ int main(int argc, char **argv){
 
   while(continue_){
 
-    std::cerr << std::endl << "current position: " << position.transpose() << std::endl;
+//    std::cerr << std::endl << "current position: " << position.transpose() << std::endl;
 
     //sample new position
     Eigen::Vector3f increment = Eigen::Vector3f::Zero();
@@ -235,62 +218,50 @@ int main(int argc, char **argv){
 
     //go forward
     if(n < 0.5f){
-      increment.x() = cos(position.z());
-      increment.y() = sin(position.z());
-      std::cerr << "go forward" << std::endl;
+      increment.x() = round(cos(position.z()));
+      increment.y() = round(sin(position.z()));
+//      std::cerr << "go forward" << std::endl;
     }
     //go left
     if(n >= 0.5f && n < 0.75f){
-      increment.x() = -sin(position.z());
-      increment.y() = cos(position.z());
+      increment.x() = round(-sin(position.z()));
+      increment.y() = round(cos(position.z()));
       increment.z() = M_PI/2.0f;
-      std::cerr << "go left" << std::endl;
+//      std::cerr << "go left" << std::endl;
     }
     //go right
     if(n >= 0.75f){
-      increment.x() = sin(position.z());
-      increment.y() = -cos(position.z());
+      increment.x() = round(sin(position.z()));
+      increment.y() = round(-cos(position.z()));
       increment.z() = -M_PI/2.0f;
-      std::cerr << "go right" << std::endl;
+//      std::cerr << "go right" << std::endl;
     }
 
     Eigen::Vector3f new_position = position+increment;
-    std::cerr << "new position: " << new_position.transpose() << std::endl;
+//    std::cerr << "new position: " << new_position.transpose() << std::endl;
 
     //check if new position is out of grid
     if(new_position.x() < 0.0f || new_position.x() >= (float)(dimension.x()-1) ||
        new_position.y() < 0.0f || new_position.y() >= (float)(dimension.y()-1)){
-      std::cerr << "out of grid!" << std::endl;
+//      std::cerr << "out of grid!" << std::endl;
       continue;
     }
 
-    //check if new position is already visited
-    if(!visited[new_position.x()][new_position.y()]){
+//    std::cerr << "eddaje!" << std::endl;
 
-      visited[new_position.x()][new_position.y()] = 1;
+    const Eigen::Vector2i p = position.head(2).cast<int>();
+    const Eigen::Vector2i np = new_position.head(2).cast<int>();
+    CellPair pair(p,np);
+    CellPairPlaneMap::iterator it = map.find(pair);
 
-      std::cerr << "eddaje!" << std::endl;
-      const Eigen::Vector2i p = position.head(2).cast<int>();
-      const Eigen::Vector2i np = new_position.head(2).cast<int>();
-      CellPair pair(p,np);
-      CellPairPlaneMap::iterator it = map.find(pair);
-
-      if(it != map.end()){
-        MatchablePtr m = it->second;
-        MatchablePtrSet::iterator jt = set.find(m);
-        if(jt != set.end())
-          set.erase(jt);
-      } else {
-        std::cerr << pair.first_cell.transpose() << " - " << pair.second_cell.transpose() << " not found!" << std::endl;
-//        continue;
-      }
-
+    if(it != map.end()){
+      MatchablePtr m = it->second;
+      MatchablePtrSet::iterator jt = set.find(m);
+      if(jt != set.end())
+        set.erase(jt);
+    } else {
+      std::cerr << pair.first_cell.transpose() << " - " << pair.second_cell.transpose() << " not found!" << std::endl;
     }
-
-//    if(neighborVisited(visited,new_position.head(2).cast<int>(),dimension.x(),dimension.y())){
-//      std::cerr << "deadlock" << std::endl;
-//      continue_=false;
-//    }
 
     position = new_position;
     count++;
