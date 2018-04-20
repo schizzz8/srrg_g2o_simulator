@@ -14,6 +14,7 @@ namespace srrg_matchable {
   
   //bdc,  Welcome C++11, damn!
   typedef std::shared_ptr<Matchable> MatchablePtr;
+  typedef std::set<MatchablePtr> MatchablePtrSet;
 
   class Matchable : public srrg_boss::Serializable {
   public:

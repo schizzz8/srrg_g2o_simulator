@@ -134,7 +134,7 @@ include_directories(${SRRG_QT_INCLUDE_DIRS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS src
-  LIBRARIES srrg_g2o_simulator_viewer_library
+  LIBRARIES srrg_g2o_simulator_library srrg_g2o_simulator_viewer_library
   CATKIN_DEPENDS srrg_core srrg_core_viewers srrg_gl_helpers
 #  DEPENDS system_lib
 )
