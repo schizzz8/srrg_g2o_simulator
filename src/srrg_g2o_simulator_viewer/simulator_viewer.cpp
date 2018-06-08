@@ -107,5 +107,20 @@ namespace srrg_g2o_simulator {
       return;
 
     _scene->draw();
+
+    if (!_robot_trajectory.size())
+      throw std::runtime_error("no trajectory");
+
+    glPushAttrib(GL_COLOR);
+    glColor4f(1.0f,0.0f,0.0f,1.f);    
+    glBegin(GL_LINES); 
+    for (int i = 1; i < _robot_trajectory.size(); ++i) {
+      const Eigen::Vector3f& vertex_a = _robot_trajectory[i-1];
+      const Eigen::Vector3f& vertex_b = _robot_trajectory[i];
+      glVertex3f(vertex_a.x(), vertex_a.y(), vertex_a.z());
+      glVertex3f(vertex_b.x(), vertex_b.y(), vertex_b.z());
+    }
+    glEnd();
+    glPopAttrib();
   }
 }

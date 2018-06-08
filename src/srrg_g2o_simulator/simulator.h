@@ -51,8 +51,13 @@ namespace srrg_g2o_simulator{
     inline void setResolution(float resolution_){_resolution=resolution_;}
     inline void setDimension(int d_){_dimension.x()=d_;_dimension.y()=d_;}
     inline void setNumPoses(int n_){_num_poses=n_;}
+    inline void setNumPlanes(const int n_) {_num_planes = n_;}
+    inline void setNumLines(const int n_) {_num_lines = n_;}
+    inline void setNumPoints(const int n_) {_num_points = n_;}
 
     inline const srrg_matchable::MatchablePtrSet &matchables() const {return _set;}
+    inline const std::vector<Eigen::Vector3f,
+      Eigen::aligned_allocator<Eigen::Vector3f> >& robotTrajectory() const {return _trajectory;}
 
     void populateSet();
 
@@ -62,6 +67,10 @@ namespace srrg_g2o_simulator{
     float _resolution;
     Eigen::Vector2i _dimension;
     int _num_poses;
+    int _num_planes;
+    int _num_lines;
+    int _num_points;
+    std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > _trajectory;
 
     srrg_matchable::MatchablePtrSet _set;
     CellPairPlaneMap _map;

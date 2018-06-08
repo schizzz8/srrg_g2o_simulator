@@ -11,9 +11,19 @@ using namespace srrg_g2o_simulator;
 
 int main(int argc, char **argv){
 
+
+  //ia TODO:
+  //   1 remove resolution (now it is fixed to 1 and sticazzi)
+  //   2 parametrize inputs
+  //   3 polish functions
+  //   4 remove sbraco
+  
   float resolution = 1.0f;
-  int d=6;
-  int num_poses=10;
+  int d=25;
+  int num_poses=50;
+  int num_planes=300;
+  int num_lines=400;
+  int num_points=300;
 
   int c=1;
   while (c<argc) {
@@ -34,6 +44,9 @@ int main(int argc, char **argv){
   s.setResolution(resolution);
   s.setDimension(d);
   s.setNumPoses(num_poses);
+  s.setNumPlanes(num_planes);
+  s.setNumLines(num_lines);
+  s.setNumPoints(num_points);
 
   s.populateSet();
 
@@ -51,6 +64,7 @@ int main(int argc, char **argv){
   QApplication app(argc, argv);
   SimulatorViewer viewer;
   viewer.setScene(scene);
+  viewer.setRobotTrajectory(s.robotTrajectory());
   viewer.show();
   app.exec();
 

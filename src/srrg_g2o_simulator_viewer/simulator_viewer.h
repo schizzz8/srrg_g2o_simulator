@@ -31,6 +31,10 @@ namespace srrg_g2o_simulator {
     virtual void draw();
 
     inline void setScene(srrg_matchable::Scene* scene_){_scene=scene_;}
+    inline void setRobotTrajectory(const std::vector<Eigen::Vector3f,
+                                   Eigen::aligned_allocator<Eigen::Vector3f> >& trajectory_) {
+      _robot_trajectory=trajectory_;
+    }
 
   protected:
 
@@ -38,6 +42,7 @@ namespace srrg_g2o_simulator {
     bool _last_key_event_processed;
 
     srrg_matchable::Scene* _scene;
+    std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > _robot_trajectory;
 
   };
 }
