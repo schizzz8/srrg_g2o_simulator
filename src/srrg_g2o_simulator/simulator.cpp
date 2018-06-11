@@ -8,14 +8,13 @@ namespace srrg_g2o_simulator{
     //ia random number generator
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> pos_distribution(0, 1);
-    std::uniform_real_distribution<> axis_distribution(0,2.5);
+    std::uniform_real_distribution<> uniform_distribution(0, 1);
 
     //ia insert points
     for (size_t i = 0; i < _num_points; ++i) {
-      float x = pos_distribution(gen)*_dimension.x();
-      float y = pos_distribution(gen)*_dimension.y();
-      float z = pos_distribution(gen);
+      float x = uniform_distribution(gen)*_dimension.x();
+      float y = uniform_distribution(gen)*_dimension.y();
+      float z = uniform_distribution(gen);
 
       MatchablePtr point_matchable(new Matchable(Matchable::Point,
                                                  Eigen::Vector3f(x,y,z)));
@@ -24,64 +23,41 @@ namespace srrg_g2o_simulator{
 
 
     //ia new lines generation
-    //ia TODO: probabilistic axis selection
-    //ia along x
-    for (size_t i = 0; i < _num_lines/3; ++i) {
-      float x = pos_distribution(gen)*_dimension.x();
-      float y = pos_distribution(gen)*_dimension.y();
-      float z = pos_distribution(gen);
+    Eigen::Vector2f line_drawing_resolution(_resolution,0.0f);
+    for (size_t i = 0; i < _num_lines; ++i) {
+      float x = uniform_distribution(gen)*_dimension.x();
+      float y = uniform_distribution(gen)*_dimension.y();
+      float z = uniform_distribution(gen);
 
-      MatchablePtr line_matchable(new Matchable(Matchable::Line,
-                                                Eigen::Vector3f(x,y,z),
-                                                Eigen::Vector3f::UnitX(),
-                                                Eigen::Vector2f(_resolution,0.0f)));
-      Eigen::Matrix3f R;
-      computeRotationMatrix(R,Eigen::Vector3f::UnitX());
-      line_matchable->setRotationMatrix(R);
-      _set.insert(line_matchable);
-    }
+      Eigen::Matrix3f rotation = Eigen::Matrix3f::Identity();
+      Eigen::Vector3f axis = Eigen::Vector3f::Zero();
 
-    std::cerr << std::endl;
-    
-    //ia along y
-    for (size_t i = 0; i < _num_lines/3; ++i) {
-      float x = pos_distribution(gen)*_dimension.x();
-      float y = pos_distribution(gen)*_dimension.y();
-      float z = pos_distribution(gen);
-        
-      MatchablePtr line_matchable(new Matchable(Matchable::Line,
-                                                Eigen::Vector3f(x,y,z),
-                                                Eigen::Vector3f::UnitY(),
-                                                Eigen::Vector2f(_resolution,0.0f)));
-      Eigen::Matrix3f R;
-      computeRotationMatrix(R,Eigen::Vector3f::UnitY());
-      line_matchable->setRotationMatrix(R);
-      _set.insert(line_matchable);
-    }
 
-    std::cerr << std::endl;
-
-    //ia along z
-    for (size_t i = 0; i < _num_lines/3; ++i) {
-      float x = pos_distribution(gen)*_dimension.x();
-      float y = pos_distribution(gen)*_dimension.y();
-      float z = pos_distribution(gen);
+      const double axis_selector = uniform_distribution(gen);
+      if (axis_selector < 0.3) {
+        axis = Eigen::Vector3f::UnitX();
+      } else if (axis_selector < 0.6 && 0.3 < axis_selector) {
+        axis = Eigen::Vector3f::UnitY();
+      } else {
+        axis = Eigen::Vector3f::UnitZ();
+      }
       
       MatchablePtr line_matchable(new Matchable(Matchable::Line,
                                                 Eigen::Vector3f(x,y,z),
-                                                Eigen::Vector3f::UnitZ(),
-                                                Eigen::Vector2f(_resolution,0.0f)));
-      Eigen::Matrix3f R;
-      computeRotationMatrix(R,Eigen::Vector3f::UnitZ());
-      line_matchable->setRotationMatrix(R);
+                                                axis,
+                                                line_drawing_resolution));
+      
+      computeRotationMatrix(rotation,axis);
+      line_matchable->setRotationMatrix(rotation);
       _set.insert(line_matchable);
     }
 
-    std::cerr << std::endl;
-
     
-    //ia new planes generation
+    // ia new planes generation
     int i = 0;
+    uint32_t xcnt = 0;
+    uint32_t ycnt = 0;
+    uint32_t zcnt = 0;
     while (i < _num_planes) {
       float x = 0;
       float y = 0;
@@ -94,56 +70,59 @@ namespace srrg_g2o_simulator{
       Eigen::Vector2i prev_cell = Eigen::Vector2i::Zero();
       Eigen::Vector2i curr_cell = Eigen::Vector2i::Zero();
 
-      const int axis_selector = round(axis_distribution(gen));
-      switch (axis_selector) {
-      case (0):
-        {
-          n = Eigen::Vector3f::UnitX();
-          r = round(pos_distribution(gen)*_dimension.x());
-          c = round(pos_distribution(gen)*_dimension.y());
+      const double x_prob = 0.25;
+      const double y_prob = 0.25;
+      const double z_prob = 1.0 - x_prob - y_prob;
 
-          x = r * _resolution;
-          y = c * _resolution + _resolution/2.0;
+      const double selector = uniform_distribution(gen);
+      if (selector < x_prob) {
+        //ia x axis
+        n = Eigen::Vector3f::UnitX();
+        r = round(uniform_distribution(gen)*_dimension.x());
+        c = round(uniform_distribution(gen)*_dimension.y());
+        
+        x = r * _resolution;
+        y = c * _resolution + _resolution/2.0;
+        
+        z = uniform_distribution(gen);
+        
+        prev_cell.x() = r - 1;
+        prev_cell.y() = c;
+        curr_cell.x() = r;
+        curr_cell.y() = c;
+        // std::cerr << "x axis (r,c) = (" << r << ", " << c << ")" << std::endl;
+        ++xcnt;
+      } else if (selector < x_prob+y_prob && x_prob < selector) {
+        //ia y axis
+        n = Eigen::Vector3f::UnitY();
+        r = round(uniform_distribution(gen)*_dimension.x());
+        c = round(uniform_distribution(gen)*_dimension.y());
+
+        x = r * _resolution + _resolution/2.0;
+        y = c * _resolution;
           
-          z = pos_distribution(gen);
+        z = uniform_distribution(gen);
 
-          prev_cell.x() = r - 1;
-          prev_cell.y() = c;
-          curr_cell.x() = r;
-          curr_cell.y() = c;
-          break;
-        }
-      case (1):
-        {
-          n = Eigen::Vector3f::UnitY();
-          r = round(pos_distribution(gen)*_dimension.x());
-          c = round(pos_distribution(gen)*_dimension.y());
+        prev_cell.x() = r;
+        prev_cell.y() = c - 1;
+        curr_cell.x() = r;
+        curr_cell.y() = c;
 
-          x = r * _resolution + _resolution/2.0;
-          y = c * _resolution;
-          
-          z = pos_distribution(gen);
-
-          prev_cell.x() = r;
-          prev_cell.y() = c - 1;
-          curr_cell.x() = r;
-          curr_cell.y() = c;
-          break;
-        }
-      case (2):
-        {
-          n = Eigen::Vector3f::UnitZ();
-          x = round(pos_distribution(gen)*_dimension.x()) + _resolution/2.0f;
-          y = round(pos_distribution(gen)*_dimension.y()) + _resolution/2.0f;
-          break;
-        }
-      default:
-        break;
+        // std::cerr << "y axis (r,c) = (" << r << ", " << c << ")" << std::endl;
+        ++ycnt;
+      } else {
+        // z axis (floor)
+        n = Eigen::Vector3f::UnitZ();
+        x = round(uniform_distribution(gen)*_dimension.x()) + _resolution/2.0f;
+        y = round(uniform_distribution(gen)*_dimension.y()) + _resolution/2.0f;
+        ++zcnt;
       }
+
+      // std::cerr << "x: " << xcnt << "\ty: " << ycnt << "\tz: " << zcnt << std::endl;
 
       if (x - _resolution/2 < 0 || x + _resolution/2 >= _dimension.x() ||
           y - _resolution/2 < 0 || y + _resolution/2 >= _dimension.y() ||
-          z - _resolution/2 < 0 && axis_selector!= 2) {
+          (z - _resolution/2 < 0 && selector < z_prob)) {
         continue;
       }
       
@@ -160,7 +139,7 @@ namespace srrg_g2o_simulator{
 
 
       //ia wall
-      if (axis_selector!=2) {
+      if (selector < z_prob) {
         CellPair pair0(prev_cell,curr_cell);
         CellPair pair1(curr_cell,prev_cell);
 
@@ -173,6 +152,7 @@ namespace srrg_g2o_simulator{
         _map.insert(std::make_pair(pair1, plane_matchable));
       }
       ++i;
+      // std::cerr << "***************************************************" << std::endl;
     }    
 
     std::cerr << "Scene has " << _set.size() << " matchables before sbraco" << std::endl;
@@ -186,54 +166,61 @@ namespace srrg_g2o_simulator{
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0, 1);
 
+    //ia visualization
     _trajectory.resize(_num_poses);
-    Eigen::Vector3f position(_dimension.x()/2-1+_resolution/2.0,
-                             _dimension.y()/2-1+_resolution/2.0,
-                             0.0f);
-
     Eigen::Vector3f traj_point = Eigen::Vector3f::Zero();
     traj_point.z() += 1;
+
+    //ia starting motion
+    Eigen::Vector3f pose_2d(_dimension.x()/2-1+_resolution/2.0,
+                            _dimension.y()/2-1+_resolution/2.0,
+                            0.0f);
+    Eigen::Vector3f new_pose_2d = Eigen::Vector3f::Zero();
 
     while(continue_){
 
       //sample new position
-      Eigen::Vector3f increment = Eigen::Vector3f::Zero();
-      float n = dis(gen);
+      float x = 0, y = 0;
+      float theta = 0;
+      float dir_selector = dis(gen);
 
       //go forward
-      if(n < 0.5f){
-        increment.x() = round(cos(position.z()));
-        increment.y() = round(sin(position.z()));
+      if(dir_selector < 0.5f){
+        x = round(cos(pose_2d.z()));
+        y = round(sin(pose_2d.z()));
       }
       //go left
-      if(n >= 0.5f && n < 0.75f){
-        increment.x() = round(-sin(position.z()));
-        increment.y() = round(cos(position.z()));
-        increment.z() = M_PI/2.0f;
+      if(dir_selector >= 0.5f && dir_selector < 0.75f){
+        x = round(-sin(pose_2d.z()));
+        y = round(cos(pose_2d.z()));
+        theta = M_PI/2.0f;
       }
       //go right
-      if(n >= 0.75f){
-        increment.x() = round(sin(position.z()));
-        increment.y() = round(-cos(position.z()));
-        increment.z() = -M_PI/2.0f;
+      if(dir_selector >= 0.75f){
+        x = round(sin(pose_2d.z()));
+        y = round(-cos(pose_2d.z()));
+        theta = -M_PI/2.0f;
       }
-      Eigen::Vector3f new_position = position+increment;
 
+      new_pose_2d = pose_2d+Eigen::Vector3f(x,y,theta);
+      
       //check if new position is out of grid
-      if(new_position.x() < 0.0f || new_position.x() >= (float)(_dimension.x()-1) ||
-         new_position.y() < 0.0f || new_position.y() >= (float)(_dimension.y()-1)){
+      if(new_pose_2d.x() < 0 || new_pose_2d.x() >= _dimension.x()-1 ||
+         new_pose_2d.y() < 0 || new_pose_2d.y() >= _dimension.y()-1){
         continue;
       }
 
+      //ia check in the wall map
+      const CellPair cell_motion(pose_2d.head(2).cast<int>(), new_pose_2d.head(2).cast<int>());
+
+
       //sbraco
-      const Eigen::Vector2i p = position.head(2).cast<int>();
-      const Eigen::Vector2i np = new_position.head(2).cast<int>();
-      CellPair pair(p,np);
-      // std::cerr << "finding wall between: " << p.transpose() << " -> " << np.transpose() << std::endl;
-      CellPairPlaneMap::iterator it = _map.find(pair);
+      std::cerr << "finding wall between: " << pose_2d.head(2).transpose()
+                << " -> " << new_pose_2d.head(2).transpose() << std::endl;
+      CellPairPlaneMap::iterator it = _map.find(cell_motion);
 
       if(it != _map.end()){
-        // std::cerr << "removed!" << std::endl;
+        std::cerr << "removed!" << std::endl;
         MatchablePtr m = it->second;
         MatchablePtrSet::iterator jt = _set.find(m);
         if(jt != _set.end())
@@ -244,9 +231,9 @@ namespace srrg_g2o_simulator{
                   // << " not found!" << std::endl;
       }
 
-      traj_point.head(2) = position.head(2);
+      traj_point.head(2) = pose_2d.head(2);
       _trajectory[count] = traj_point;
-      position = new_position;
+      pose_2d = new_pose_2d;
       count++;
 
       if(count == _num_poses) {

@@ -5,8 +5,8 @@
 namespace srrg_g2o_simulator{
 
   struct CellPair{
-    CellPair(const Eigen::Vector2i &first_cell_,
-             const Eigen::Vector2i &second_cell_):
+    CellPair(const Eigen::Vector2i& first_cell_,
+             const Eigen::Vector2i& second_cell_):
       first_cell(first_cell_),
       second_cell(second_cell_){}
 
